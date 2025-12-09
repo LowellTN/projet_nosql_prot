@@ -71,7 +71,7 @@ services:
     networks:
       - protein_network
     ports:
-      - "5000:5000"
+      - "5001:5000"
     command: python src/app.py
 
 networks:

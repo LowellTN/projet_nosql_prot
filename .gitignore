@@ -1,0 +1,60 @@
+# Data files - TSV files can be large
+data/
+*.tsv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+
+# Docker volumes and logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database dumps and backups
+*.dump
+*.bak
+*.backup
+dump/
+backups/
+
+# Neo4j data (if running locally)
+neo4j_data/
+neo4j_logs/
+
+# MongoDB data (if running locally)
+mongodb_data/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
