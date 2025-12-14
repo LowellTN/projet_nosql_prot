@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, request, render_template_string, render_template
 from flask_cors import CORS
 from database.mongodb_client import MongoDBClient
 from database.neo4j_client import Neo4jClient
@@ -26,98 +26,9 @@ neo4j_client = Neo4jClient(
 @app.route('/')
 def index():
     """
-    Home page with API documentation.
+    Home page with graphical interface.
     """
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Protein Analysis API</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-            h1 { color: #2c3e50; }
-            h2 { color: #34495e; margin-top: 30px; }
-            .endpoint { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .method { display: inline-block; padding: 5px 10px; border-radius: 3px; font-weight: bold; margin-right: 10px; }
-            .get { background: #3498db; color: white; }
-            .post { background: #2ecc71; color: white; }
-            code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; }
-        </style>
-    </head>
-    <body>
-        <h1>🧬 Protein Analysis API</h1>
-        <p>NoSQL-based protein data querying and analysis system using MongoDB and Neo4j</p>
-        
-        <h2>📊 System Status</h2>
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/health</code>
-            <p>Check database connection status</p>
-        </div>
-        
-        <h2>🔍 MongoDB Queries (Document Store)</h2>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/mongodb/search?q=cytochrome</code>
-            <p>Search proteins by identifier, name, or description</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/mongodb/protein/:id</code>
-            <p>Get protein details by identifier</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/mongodb/statistics</code>
-            <p>Get MongoDB database statistics</p>
-        </div>
-        
-        <h2>🕸️ Neo4j Queries (Graph Database)</h2>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/neo4j/protein/:id</code>
-            <p>Get protein node from graph</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/neo4j/neighbors/:id?depth=1</code>
-            <p>Get protein neighbors (depth: 1 or 2)</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/neo4j/neighborhood/:id?depth=2</code>
-            <p>Get full neighborhood visualization data</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/neo4j/statistics</code>
-            <p>Get graph statistics</p>
-        </div>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/neo4j/search?q=cytochrome</code>
-            <p>Search proteins in graph by identifier/name</p>
-        </div>
-        
-        <h2>📈 Analysis Endpoints</h2>
-        
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/statistics/overview</code>
-            <p>Get comprehensive system statistics</p>
-        </div>
-    </body>
-    </html>
-    """
-    return render_template_string(html)
+    return render_template('index.html')
 
 @app.route('/health')
 def health():
@@ -166,7 +77,7 @@ def mongodb_search():
             'query': query_term,
             'count': len(proteins),
             'limit': limit,
-            'results': proteins
+            'proteins': proteins  # Changed from 'results' to 'proteins' for consistency with frontend
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -411,6 +322,73 @@ def statistics_overview():
                 'mongodb_connected': mongo_client.check_connection(),
                 'neo4j_connected': neo4j_client.check_connection()
             }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# PREDICTIONS ENDPOINTS
+# ============================================================================
+
+@app.route('/api/predictions/<protein_id>')
+def get_prediction(protein_id):
+    """
+    Get prediction for a specific protein.
+    
+    Path Parameters:
+        protein_id (str): Protein identifier
+    
+    Returns:
+        JSON with predicted EC numbers and confidence scores
+    
+    Example:
+        GET /api/predictions/A0A0B4J2F0
+    """
+    try:
+        # Get prediction from MongoDB predictions collection
+        prediction = mongo_client.db['predictions'].find_one({'protein_id': protein_id})
+        
+        if prediction:
+            prediction['_id'] = str(prediction['_id'])
+            return jsonify(prediction)
+        else:
+            return jsonify({'error': 'No prediction found for this protein'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/predictions')
+def get_predictions():
+    """
+    Get list of predictions with pagination.
+    
+    Query Parameters:
+        limit (int): Maximum number of predictions to return (default: 20)
+        skip (int): Number of predictions to skip (default: 0)
+    
+    Returns:
+        JSON with list of predictions
+    
+    Example:
+        GET /api/predictions?limit=10
+    """
+    limit = int(request.args.get('limit', 20))
+    skip = int(request.args.get('skip', 0))
+    
+    try:
+        predictions = list(mongo_client.db['predictions'].find().skip(skip).limit(limit))
+        
+        # Convert ObjectId to string
+        for pred in predictions:
+            pred['_id'] = str(pred['_id'])
+        
+        total = mongo_client.db['predictions'].count_documents({})
+        
+        return jsonify({
+            'predictions': predictions,
+            'count': len(predictions),
+            'total': total,
+            'limit': limit,
+            'skip': skip
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

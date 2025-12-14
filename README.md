@@ -121,9 +121,47 @@ docker compose exec python python src/label_propagation.py
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
+| **Web Interface** | http://localhost:5000 | - |
 | **API Documentation** | http://localhost:5000 | - |
 | **MongoDB** | mongodb://localhost:27017 | root / password123 |
 | **Neo4j Browser** | http://localhost:7474 | neo4j / password123 |
+
+## Web Interface Features
+
+The graphical user interface provides an intuitive way to explore protein data:
+
+### 1. Dashboard
+- **System Statistics**: Total proteins, labeled/unlabeled counts
+- **Graph Metrics**: Total edges, average node degree, isolated proteins
+- **Top Proteins**: Most connected proteins in the network
+- **Top Domains**: Most frequent InterPro domains
+- **Top EC Numbers**: Most common enzyme classifications
+
+### 2. Search & Explore
+- **Protein Search**: Search by identifier, name, or description
+- **Detailed View**: Complete protein information with:
+  - Identifier, organism, sequence length
+  - InterPro domains
+  - EC numbers (original annotations)
+  - Predicted EC numbers with confidence scores
+- **Neighbor Exploration**: View direct neighbors with similarity weights
+- **Quick Actions**: Jump to graph view or neighbor list
+
+### 3. Graph Explorer
+- **Interactive Visualization**: Explore protein networks visually
+- **Adjustable Depth**: Select neighborhood depth (1-3 levels)
+- **Color Coding**: 
+  - 🟢 Green nodes = Labeled proteins
+  - ⚪ Gray nodes = Unlabeled proteins
+- **Edge Thickness**: Represents similarity strength
+- **Interactive Navigation**: Click nodes to view details
+- **Dynamic Loading**: Real-time graph generation
+
+### Quick Navigation
+1. Open **http://localhost:5000** in your browser
+2. Explore the **Dashboard** for system overview
+3. Use **Search** to find specific proteins
+4. View protein networks in **Graph Explorer**
 
 ## Usage Examples
 
