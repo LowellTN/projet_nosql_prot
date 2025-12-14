@@ -299,7 +299,9 @@ class ProteinGraphBuilder:
         """
         Create a batch of similarity edges in Neo4j.
         
-        Creates undirected edges with weight property.
+        Creates directed edges with weight property.
+        Note: In Neo4j, all relationships must be directed, but we can
+        query them as undirected using Cypher patterns.
         
         Args:
             batch: List of edge data dictionaries
@@ -309,7 +311,7 @@ class ProteinGraphBuilder:
                 UNWIND $batch AS edge
                 MATCH (p1:Protein {id: edge.id1})
                 MATCH (p2:Protein {id: edge.id2})
-                CREATE (p1)-[:SIMILAR_TO {weight: edge.weight}]-(p2)
+                CREATE (p1)-[:SIMILAR_TO {weight: edge.weight}]->(p2)
             """, batch=batch)
         
         self.stats['edges_created'] += len(batch)

@@ -274,13 +274,21 @@ class LabelPropagation:
         Args:
             batch: List of protein updates
         """
+        # Convert confidence dict to parallel lists for Neo4j storage
+        for item in batch:
+            confidence_dict = item['confidence']
+            # Create two parallel lists: EC numbers and their confidence scores
+            item['confidence_ec'] = list(confidence_dict.keys())
+            item['confidence_values'] = list(confidence_dict.values())
+        
         with self.neo4j_client.driver.session() as session:
             session.run(
                 """
                 UNWIND $batch AS item
                 MATCH (p:Protein {id: item.protein_id})
                 SET p.predicted_ec_numbers = item.predicted_ec,
-                    p.prediction_confidence = item.confidence
+                    p.prediction_confidence_ec = item.confidence_ec,
+                    p.prediction_confidence_values = item.confidence_values
                 """,
                 batch=batch
             )
