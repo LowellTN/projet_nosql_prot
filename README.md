@@ -186,10 +186,10 @@ docker compose exec neo4j cypher-shell -u neo4j -p password123
 MATCH (p:Protein) RETURN count(p);
 
 # Find protein by ID
-MATCH (p:Protein {id: "A0A087X1C5"}) RETURN p;
+MATCH (p:Protein {id: "O14569"}) RETURN p;
 
 # Get protein and neighbors
-MATCH (p:Protein {id: "A0A087X1C5"})-[r:SIMILAR_TO]-(n)
+MATCH (p:Protein {id: "O14569"})-[r:SIMILAR_TO]-(n)
 RETURN p, r, n
 LIMIT 50;
 
