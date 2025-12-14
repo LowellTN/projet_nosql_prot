@@ -461,7 +461,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
-                        <div class="col-md-8">
+                        <div class="col-md-6">
                             <input type="text" id="graph-protein-input" class="form-control" 
                                    placeholder="Enter protein ID (e.g., Q9NYW3)">
                         </div>
@@ -475,6 +475,11 @@
                         <div class="col-md-2">
                             <button class="btn btn-primary w-100" onclick="loadGraph()">
                                 <i class="bi bi-arrow-clockwise"></i> Load
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-secondary w-100" onclick="togglePhysics()" id="physics-toggle-btn" style="display: none;">
+                                <i class="bi bi-pause-circle"></i> Freeze
                             </button>
                         </div>
                     </div>
@@ -508,6 +513,7 @@
         // Global variables
         let currentProteinId = null;
         let networkGraph = null;
+        let physicsEnabled = true;
         
         // Tab navigation
         function showTab(tabName) {
@@ -762,6 +768,25 @@
             loadGraph();
         }
         
+        // Toggle physics on/off
+        function togglePhysics() {
+            if (!networkGraph) return;
+            
+            physicsEnabled = !physicsEnabled;
+            networkGraph.setOptions({ physics: { enabled: physicsEnabled } });
+            
+            const btn = document.getElementById('physics-toggle-btn');
+            if (physicsEnabled) {
+                btn.innerHTML = '<i class="bi bi-pause-circle"></i> Freeze';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-secondary');
+            } else {
+                btn.innerHTML = '<i class="bi bi-play-circle"></i> Animate';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-success');
+            }
+        }
+        
         // Load graph visualization
         async function loadGraph() {
             const proteinId = document.getElementById('graph-protein-input').value;
@@ -826,18 +851,33 @@
                         }
                     },
                     physics: {
+                        enabled: true,
                         stabilization: {
-                            iterations: 200
+                            enabled: true,
+                            iterations: 1000,
+                            updateInterval: 25,
+                            onlyDynamicEdges: false,
+                            fit: true
                         },
                         barnesHut: {
-                            gravitationalConstant: -8000,
-                            springConstant: 0.04,
-                            springLength: 95
-                        }
+                            gravitationalConstant: -2000,
+                            centralGravity: 0.3,
+                            springLength: 120,
+                            springConstant: 0.01,
+                            damping: 0.5,
+                            avoidOverlap: 0.2
+                        },
+                        maxVelocity: 30,
+                        minVelocity: 0.75,
+                        solver: 'barnesHut',
+                        timestep: 0.5
                     },
                     interaction: {
                         hover: true,
-                        tooltipDelay: 100
+                        tooltipDelay: 100,
+                        dragNodes: true,
+                        dragView: true,
+                        zoomView: true
                     }
                 };
                 
@@ -848,6 +888,29 @@
                 
                 networkGraph = new vis.Network(container, graphData, options);
                 
+                // Add stabilization progress indicator
+                networkGraph.on('stabilizationProgress', function(params) {
+                    const progress = Math.round((params.iterations / params.total) * 100);
+                    loading.innerHTML = `
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Stabilizing graph... ${progress}%</p>
+                    `;
+                });
+                
+                // When stabilization is done, disable physics to stop movement
+                networkGraph.on('stabilizationIterationsDone', function() {
+                    networkGraph.setOptions({ physics: { enabled: false } });
+                    physicsEnabled = false;
+                    loading.style.display = 'none';
+                    
+                    // Show the physics toggle button
+                    document.getElementById('physics-toggle-btn').style.display = 'block';
+                    const btn = document.getElementById('physics-toggle-btn');
+                    btn.innerHTML = '<i class="bi bi-play-circle"></i> Animate';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-success');
+                });
+                
                 // Event handlers
                 networkGraph.on('click', function(params) {
                     if (params.nodes.length > 0) {
@@ -856,8 +919,6 @@
                         showTab('search');
                     }
                 });
-                
-                loading.style.display = 'none';
                 
             } catch (error) {
                 console.error('Error loading graph:', error);
