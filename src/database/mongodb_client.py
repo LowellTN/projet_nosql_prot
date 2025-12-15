@@ -58,6 +58,7 @@ class MongoDBClient:
             total_count = self.proteins.count_documents({})
             labeled_count = self.proteins.count_documents({'is_labeled': True})
             unlabeled_count = self.proteins.count_documents({'is_labeled': False})
+            predicted_count = self.proteins.count_documents({'is_predicted': True})
             
             # Average sequence length
             pipeline = [
@@ -99,7 +100,9 @@ class MongoDBClient:
                 'total_proteins': total_count,
                 'labeled_proteins': labeled_count,
                 'unlabeled_proteins': unlabeled_count,
+                'predicted_proteins': predicted_count,
                 'labeled_percentage': round((labeled_count / total_count * 100), 2) if total_count > 0 else 0,
+                'predicted_percentage': round((predicted_count / total_count * 100), 2) if total_count > 0 else 0,
                 'average_sequence_length': round(avg_length, 2),
                 'top_ec_numbers': [{'ec_number': item['_id'], 'count': item['count']} for item in ec_distribution],
                 'top_domains': [{'domain': item['_id'], 'count': item['count']} for item in domain_distribution]

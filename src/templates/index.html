@@ -274,8 +274,8 @@
                 </div>
                 <div class="col-md-3">
                     <div class="card stat-card">
-                        <div class="stat-number text-warning" id="unlabeled-proteins">-</div>
-                        <div class="stat-label">Unlabeled</div>
+                        <div class="stat-number text-primary" id="predicted-proteins">-</div>
+                        <div class="stat-label">Predicted</div>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -301,6 +301,15 @@
                                 </div>
                                 <div class="progress">
                                     <div id="labeled-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Predicted Proteins</span>
+                                    <span id="predicted-percent">-</span>
+                                </div>
+                                <div class="progress">
+                                    <div id="predicted-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -536,18 +545,21 @@
                     data.mongodb.total_proteins.toLocaleString();
                 document.getElementById('labeled-proteins').textContent = 
                     data.mongodb.labeled_proteins.toLocaleString();
-                document.getElementById('unlabeled-proteins').textContent = 
-                    data.mongodb.unlabeled_proteins.toLocaleString();
+                document.getElementById('predicted-proteins').textContent = 
+                    data.mongodb.predicted_proteins.toLocaleString();
                 document.getElementById('total-edges').textContent = 
                     data.neo4j.total_edges.toLocaleString();
                 
                 // Update percentages
                 const labeledPercent = data.mongodb.labeled_percentage.toFixed(1);
-                const unlabeledPercent = (100 - labeledPercent).toFixed(1);
+                const predictedPercent = data.mongodb.predicted_percentage.toFixed(1);
+                const unlabeledPercent = (100 - labeledPercent - predictedPercent).toFixed(1);
                 
                 document.getElementById('labeled-percent').textContent = labeledPercent + '%';
+                document.getElementById('predicted-percent').textContent = predictedPercent + '%';
                 document.getElementById('unlabeled-percent').textContent = unlabeledPercent + '%';
                 document.getElementById('labeled-progress').style.width = labeledPercent + '%';
+                document.getElementById('predicted-progress').style.width = predictedPercent + '%';
                 document.getElementById('unlabeled-progress').style.width = unlabeledPercent + '%';
                 
                 document.getElementById('avg-sequence').textContent = 

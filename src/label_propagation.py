@@ -219,17 +219,58 @@ class LabelPropagation:
         
         predictions_collection = self.mongo_client.db['predictions']
         
-        # Clear existing predictions
-        predictions_collection.delete_many({})
-        
-        # Insert new predictions
-        predictions_collection.insert_many(predictions)
-        
-        print(f"✓ Saved {len(predictions):,} predictions to MongoDB")
-        
-        # Create index on protein_id
+        # Create index first (if not exists)
         predictions_collection.create_index('protein_id', unique=True)
-        print("✓ Created index on protein_id")
+        
+        # Use upsert to avoid duplicate key errors
+        upserted_count = 0
+        for pred in predictions:
+            predictions_collection.update_one(
+                {'protein_id': pred['protein_id']},
+                {'$set': pred},
+                upsert=True
+            )
+            upserted_count += 1
+        
+        print(f"✓ Saved {upserted_count:,} predictions to MongoDB")
+    
+    def update_proteins_with_predictions(self, predictions: List[Dict]) -> None:
+        """
+        Update the main proteins collection with predicted EC numbers.
+        
+        This adds the predicted_ec_numbers field to the protein documents
+        and sets is_predicted flag to True.
+        
+        Args:
+            predictions: List of prediction dictionaries
+        """
+        print(f"\n{'='*60}")
+        print("UPDATING PROTEINS COLLECTION WITH PREDICTIONS")
+        print(f"{'='*60}\n")
+        
+        if not predictions:
+            print("No predictions to update.")
+            return
+        
+        proteins_collection = self.mongo_client.db['proteins']
+        updated_count = 0
+        
+        for pred in predictions:
+            result = proteins_collection.update_one(
+                {'identifier': pred['protein_id']},
+                {
+                    '$set': {
+                        'predicted_ec_numbers': pred['predicted_ec_numbers'],
+                        'prediction_confidence': pred['confidence_scores'],
+                        'is_predicted': True,
+                        'average_prediction_confidence': pred['average_confidence']
+                    }
+                }
+            )
+            if result.modified_count > 0:
+                updated_count += 1
+        
+        print(f"✓ Updated {updated_count:,} proteins in MongoDB with predictions")
     
     def update_neo4j_with_predictions(self, predictions: List[Dict]) -> None:
         """
@@ -389,8 +430,11 @@ def main():
     )
     
     if predictions:
-        # Save predictions to MongoDB
+        # Save predictions to MongoDB (separate collection)
         lp.save_predictions_to_mongodb(predictions)
+        
+        # Update proteins collection with predictions
+        lp.update_proteins_with_predictions(predictions)
         
         # Update Neo4j with predictions
         lp.update_neo4j_with_predictions(predictions)
