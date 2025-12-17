@@ -284,6 +284,69 @@ class Neo4jClient:
             
             return proteins
     
+    def get_adaptive_threshold(self, protein_id: str, target_neighbors: int = 10) -> Dict:
+        """
+        Calculate adaptive similarity threshold for a protein.
+        
+        For proteins with many neighbors, use higher threshold.
+        For proteins with few neighbors, use lower threshold.
+        
+        Args:
+            protein_id: Protein identifier
+            target_neighbors: Target number of neighbors (default: 10)
+            
+        Returns:
+            Dictionary with recommended threshold and neighbor count
+        """
+        with self.driver.session() as session:
+            # Get all edge weights for this protein, sorted descending
+            result = session.run(
+                """
+                MATCH (p:Protein {id: $id})-[r:SIMILAR_TO]-()
+                RETURN r.weight as weight
+                ORDER BY r.weight DESC
+                """,
+                id=protein_id
+            )
+            
+            weights = [record['weight'] for record in result]
+            total_neighbors = len(weights)
+            
+            if total_neighbors == 0:
+                return {
+                    'protein_id': protein_id,
+                    'total_neighbors': 0,
+                    'recommended_threshold': 0.0,
+                    'strategy': 'isolated',
+                    'message': 'Protein has no neighbors'
+                }
+            
+            # Strategy: adjust threshold to get ~target_neighbors
+            if total_neighbors <= target_neighbors:
+                # Few neighbors: use low threshold to get all
+                recommended = min(weights) if weights else 0.0
+                strategy = 'low_threshold'
+                message = f'Protein has only {total_neighbors} neighbors, using minimum threshold'
+            else:
+                # Many neighbors: use threshold that gives ~target_neighbors
+                # Take the weight at position target_neighbors (sorted desc)
+                recommended = weights[min(target_neighbors - 1, len(weights) - 1)]
+                strategy = 'adaptive_threshold'
+                message = f'Protein has {total_neighbors} neighbors, using adaptive threshold'
+            
+            return {
+                'protein_id': protein_id,
+                'total_neighbors': total_neighbors,
+                'recommended_threshold': round(recommended, 3),
+                'strategy': strategy,
+                'message': message,
+                'weight_distribution': {
+                    'max': round(max(weights), 3) if weights else 0.0,
+                    'min': round(min(weights), 3) if weights else 0.0,
+                    'median': round(weights[len(weights)//2], 3) if weights else 0.0
+                }
+            }
+    
     def get_graph_statistics(self) -> Dict:
         """
         Get comprehensive graph statistics.

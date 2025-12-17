@@ -19,9 +19,7 @@ neo4j_client = Neo4jClient(
     password=os.getenv('NEO4J_PASSWORD')
 )
 
-# ============================================================================
 # HOME AND HEALTH ENDPOINTS
-# ============================================================================
 
 @app.route('/')
 def index():
@@ -44,9 +42,7 @@ def health():
         'neo4j': neo4j_client.check_connection()
     })
 
-# ============================================================================
-# MONGODB ENDPOINTS (Task 3.1)
-# ============================================================================
+# MONGODB ENDPOINTS
 
 @app.route('/api/mongodb/search')
 def mongodb_search():
@@ -129,9 +125,7 @@ def mongodb_statistics():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# NEO4J ENDPOINTS (Task 3.2)
-# ============================================================================
+# NEO4J ENDPOINTS
 
 @app.route('/api/neo4j/protein/<protein_id>')
 def neo4j_get_protein(protein_id):
@@ -295,9 +289,86 @@ def neo4j_statistics():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# COMBINED STATISTICS (Task 3.3)
-# ============================================================================
+@app.route('/api/neo4j/adaptive-threshold/<protein_id>')
+def neo4j_adaptive_threshold(protein_id):
+    """
+    Get adaptive similarity threshold for a protein.
+    
+    Automatically adjusts threshold based on neighbor count:
+    - Many neighbors (>target): returns higher threshold to limit results
+    - Few neighbors (<target): returns lower threshold to include all
+    
+    Path Parameters:
+        protein_id (str): Protein identifier
+    
+    Query Parameters:
+        target_neighbors (int): Target number of neighbors (default: 10)
+    
+    Returns:
+        JSON with recommended threshold and statistics
+    
+    Example:
+        GET /api/neo4j/adaptive-threshold/A0A087X1C5?target_neighbors=15
+    """
+    target_neighbors = int(request.args.get('target_neighbors', 10))
+    
+    try:
+        result = neo4j_client.get_adaptive_threshold(
+            protein_id=protein_id,
+            target_neighbors=target_neighbors
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/neo4j/neighbors-adaptive/<protein_id>')
+def neo4j_get_neighbors_adaptive(protein_id):
+    """
+    Get neighbors using adaptive threshold.
+    
+    Automatically determines optimal threshold for this protein.
+    
+    Path Parameters:
+        protein_id (str): Protein identifier
+    
+    Query Parameters:
+        target_neighbors (int): Target number of neighbors (default: 10)
+        depth (int): Neighborhood depth (default: 1)
+    
+    Returns:
+        JSON with protein, neighbors, and applied threshold
+    
+    Example:
+        GET /api/neo4j/neighbors-adaptive/A0A087X1C5?target_neighbors=20
+    """
+    target_neighbors = int(request.args.get('target_neighbors', 10))
+    depth = int(request.args.get('depth', 1))
+    
+    try:
+        # Get adaptive threshold
+        threshold_info = neo4j_client.get_adaptive_threshold(
+            protein_id=protein_id,
+            target_neighbors=target_neighbors
+        )
+        
+        # Get neighbors with that threshold
+        neighbors = neo4j_client.get_neighbors(
+            protein_id=protein_id,
+            depth=depth,
+            min_weight=threshold_info['recommended_threshold'],
+            limit=target_neighbors * 2  # Allow some overflow
+        )
+        
+        if neighbors:
+            neighbors['threshold_info'] = threshold_info
+            return jsonify(neighbors)
+        else:
+            return jsonify({'error': 'Protein not found in graph'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# COMBINED STATISTICS
 
 @app.route('/api/statistics/overview')
 def statistics_overview():
@@ -326,9 +397,7 @@ def statistics_overview():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
 # PREDICTIONS ENDPOINTS
-# ============================================================================
 
 @app.route('/api/predictions/<protein_id>')
 def get_prediction(protein_id):
@@ -393,9 +462,8 @@ def get_predictions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
+
 # ERROR HANDLERS
-# ============================================================================
 
 @app.errorhandler(404)
 def not_found(error):
@@ -405,9 +473,8 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
-# ============================================================================
+
 # MAIN
-# ============================================================================
 
 if __name__ == '__main__':
     print("\n" + "="*60)

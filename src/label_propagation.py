@@ -1,17 +1,3 @@
-"""
-Label Propagation for Protein Function Annotation
-
-This script implements a label propagation algorithm to infer EC numbers
-(enzyme classifications) for unlabeled proteins based on the graph structure
-and labeled neighbors.
-
-This is a multi-label classification problem where each protein can have
-multiple EC numbers.
-
-Author: Project NoSQL Team
-Date: December 2025
-"""
-
 import os
 import sys
 from typing import Dict, List, Set, Tuple
