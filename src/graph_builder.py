@@ -1,19 +1,3 @@
-"""
-Protein Graph Builder for Neo4j
-
-This script constructs a domain-based protein-protein network (PPN) in Neo4j.
-The graph is built by calculating similarity between proteins based on their
-shared InterPro domains using the Jaccard similarity coefficient.
-
-The Jaccard coefficient is calculated as:
-    J(A,B) = |A ∩ B| / |A ∪ B|
-
-where A and B are sets of InterPro domain IDs for two proteins.
-
-Author: Project NoSQL Team
-Date: December 2025
-"""
-
 import os
 import sys
 from typing import Dict, List, Set, Tuple
@@ -25,28 +9,12 @@ from database.neo4j_client import Neo4jClient
 class ProteinGraphBuilder:
     """
     Builds a protein-protein network in Neo4j based on domain similarity.
-    
-    The graph construction process:
-    1. Load proteins with domains from MongoDB
-    2. Create protein nodes in Neo4j with attributes
-    3. Calculate Jaccard similarity for all protein pairs
-    4. Create weighted edges for protein pairs above similarity threshold
-    
-    Graph properties:
-    - Nodes represent proteins (labeled and unlabeled)
-    - Edges represent domain similarity (Jaccard coefficient)
-    - Graph is undirected and weighted
     """
     
     def __init__(self, mongo_client: MongoDBClient, neo4j_client: Neo4jClient,
                  similarity_threshold: float = 0.1):
         """
-        Initialize the graph builder.
-        
-        Args:
-            mongo_client: MongoDB client instance
-            neo4j_client: Neo4j client instance
-            similarity_threshold: Minimum Jaccard similarity to create an edge (default: 0.1)
+        Initialize the graph builder with the clients and the similarity threshold.
         """
         self.mongo_client = mongo_client
         self.neo4j_client = neo4j_client
@@ -63,23 +31,6 @@ class ProteinGraphBuilder:
     def calculate_jaccard_similarity(self, domains1: Set[str], domains2: Set[str]) -> float:
         """
         Calculate Jaccard similarity coefficient between two sets of domains.
-        
-        The Jaccard index measures similarity as:
-            J(A,B) = |A ∩ B| / |A ∪ B|
-        
-        Example:
-            P1 domains: {d1, d2, d3, d4}
-            P2 domains: {d1, d3, d5}
-            Intersection: {d1, d3} -> size = 2
-            Union: {d1, d2, d3, d4, d5} -> size = 5
-            Jaccard = 2/5 = 0.4
-        
-        Args:
-            domains1: Set of InterPro domain IDs for first protein
-            domains2: Set of InterPro domain IDs for second protein
-            
-        Returns:
-            Jaccard similarity coefficient (0.0 to 1.0)
         """
         if not domains1 or not domains2:
             return 0.0
@@ -98,12 +49,6 @@ class ProteinGraphBuilder:
         
         Only proteins with at least one InterPro domain are included
         since we need domains to calculate similarity.
-        
-        Args:
-            limit: Maximum number of proteins to load (None = all)
-            
-        Returns:
-            List of protein documents with domains
         """
         print(f"\n{'='*60}")
         print("LOADING PROTEINS FROM MONGODB")
@@ -133,20 +78,7 @@ class ProteinGraphBuilder:
     
     def create_protein_nodes(self, proteins: List[Dict]) -> None:
         """
-        Create protein nodes in Neo4j with their attributes.
-        
-        Each node contains:
-        - id: Protein identifier
-        - entry_name: Entry name
-        - name: Full protein name
-        - organism: Species
-        - is_labeled: Has EC numbers?
-        - ec_numbers: List of EC classifications (if labeled)
-        - interpro_domains: List of domain IDs
-        - sequence_length: Length of amino acid sequence
-        
-        Args:
-            proteins: List of protein documents from MongoDB
+        Create protein nodes in Neo4j with their attributes form mongoDB.
         """
         print(f"\n{'='*60}")
         print("CREATING PROTEIN NODES IN NEO4J")
@@ -195,11 +127,7 @@ class ProteinGraphBuilder:
     def _create_node_batch(self, batch: List[Dict]) -> None:
         """
         Create a batch of protein nodes in Neo4j.
-        
         Uses Cypher UNWIND for efficient batch creation.
-        
-        Args:
-            batch: List of node data dictionaries
         """
         with self.neo4j_client.driver.session() as session:
             session.run("""
@@ -222,18 +150,6 @@ class ProteinGraphBuilder:
                                batch_size: int = 1000) -> None:
         """
         Create similarity edges between proteins based on Jaccard coefficient.
-        
-        This is the most computationally intensive part of graph construction.
-        For N proteins, we need to compare N*(N-1)/2 pairs.
-        
-        To optimize:
-        - Only create edges above similarity threshold
-        - Process in batches
-        - Show progress updates
-        
-        Args:
-            proteins: List of protein documents
-            batch_size: Number of edges to create in each batch
         """
         print(f"\n{'='*60}")
         print("CREATING SIMILARITY EDGES")
@@ -298,13 +214,6 @@ class ProteinGraphBuilder:
     def _create_edge_batch(self, batch: List[Dict]) -> None:
         """
         Create a batch of similarity edges in Neo4j.
-        
-        Creates directed edges with weight property.
-        Note: In Neo4j, all relationships must be directed, but we can
-        query them as undirected using Cypher patterns.
-        
-        Args:
-            batch: List of edge data dictionaries
         """
         with self.neo4j_client.driver.session() as session:
             session.run("""
