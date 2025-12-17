@@ -36,15 +36,6 @@ class Neo4jClient:
             )
     
     def get_protein_node(self, protein_id: str) -> Optional[Dict]:
-        """
-        Get a protein node by ID.
-        
-        Args:
-            protein_id: Protein identifier
-            
-        Returns:
-            Dictionary with protein properties or None
-        """
         with self.driver.session() as session:
             result = session.run(
                 "MATCH (p:Protein {id: $id}) RETURN p",
@@ -57,18 +48,6 @@ class Neo4jClient:
     
     def get_neighbors(self, protein_id: str, depth: int = 1, 
                      min_weight: float = 0.0, limit: int = 50) -> Optional[Dict]:
-        """
-        Get neighbors of a protein.
-        
-        Args:
-            protein_id: Protein identifier
-            depth: Neighborhood depth (1 or 2)
-            min_weight: Minimum edge weight
-            limit: Maximum neighbors to return
-            
-        Returns:
-            Dictionary with protein and neighbors
-        """
         with self.driver.session() as session:
             if depth == 1:
                 query = """
@@ -80,7 +59,7 @@ class Neo4jClient:
                 LIMIT $limit
                 RETURN p, collect({neighbor: neighbor, weight: r.weight}) as neighbors
                 """
-            else:  # depth == 2
+            else:  
                 query = """
                 MATCH (p:Protein {id: $id})
                 OPTIONAL MATCH path = (p)-[r1:SIMILAR_TO]-(n1:Protein)-[r2:SIMILAR_TO]-(n2:Protein)
@@ -151,20 +130,7 @@ class Neo4jClient:
     
     def get_neighborhood_visualization(self, protein_id: str, depth: int = 2,
                                       min_weight: float = 0.1, limit: int = 100) -> Optional[Dict]:
-        """
-        Get neighborhood data for visualization (nodes and edges).
-        
-        Args:
-            protein_id: Protein identifier
-            depth: Neighborhood depth
-            min_weight: Minimum edge weight
-            limit: Maximum nodes
-            
-        Returns:
-            Dictionary with nodes and edges arrays
-        """
         with self.driver.session() as session:
-            # Get center node
             center_result = session.run("MATCH (p:Protein {id: $id}) RETURN p", id=protein_id)
             center_record = center_result.single()
             
@@ -176,7 +142,6 @@ class Neo4jClient:
             edges = []
             seen_nodes = {protein_id}
             
-            # Get level 1 neighbors
             level1_result = session.run(
                 """
                 MATCH (center:Protein {id: $id})-[r:SIMILAR_TO]-(n:Protein)
@@ -208,9 +173,8 @@ class Neo4jClient:
                     'weight': weight
                 })
             
-            # Get level 2 neighbors if depth == 2
             if depth == 2 and level1_neighbors:
-                for level1_id in level1_neighbors[:min(20, len(level1_neighbors))]:  # Limit level 2 expansion
+                for level1_id in level1_neighbors[:min(50, len(level1_neighbors))]:  # Limit level 2 expansion to 50
                     level2_result = session.run(
                         """
                         MATCH (n1:Protein {id: $id})-[r:SIMILAR_TO]-(n2:Protein)
@@ -256,16 +220,6 @@ class Neo4jClient:
             }
     
     def search_proteins(self, search_term: str, limit: int = 50) -> List[Dict]:
-        """
-        Search proteins in graph by identifier or name.
-        
-        Args:
-            search_term: Search term
-            limit: Maximum results
-            
-        Returns:
-            List of matching proteins
-        """
         with self.driver.session() as session:
             result = session.run(
                 """
@@ -285,21 +239,7 @@ class Neo4jClient:
             return proteins
     
     def get_adaptive_threshold(self, protein_id: str, target_neighbors: int = 10) -> Dict:
-        """
-        Calculate adaptive similarity threshold for a protein.
-        
-        For proteins with many neighbors, use higher threshold.
-        For proteins with few neighbors, use lower threshold.
-        
-        Args:
-            protein_id: Protein identifier
-            target_neighbors: Target number of neighbors (default: 10)
-            
-        Returns:
-            Dictionary with recommended threshold and neighbor count
-        """
         with self.driver.session() as session:
-            # Get all edge weights for this protein, sorted descending
             result = session.run(
                 """
                 MATCH (p:Protein {id: $id})-[r:SIMILAR_TO]-()
@@ -321,15 +261,11 @@ class Neo4jClient:
                     'message': 'Protein has no neighbors'
                 }
             
-            # Strategy: adjust threshold to get ~target_neighbors
             if total_neighbors <= target_neighbors:
-                # Few neighbors: use low threshold to get all
                 recommended = min(weights) if weights else 0.0
                 strategy = 'low_threshold'
                 message = f'Protein has only {total_neighbors} neighbors, using minimum threshold'
             else:
-                # Many neighbors: use threshold that gives ~target_neighbors
-                # Take the weight at position target_neighbors (sorted desc)
                 recommended = weights[min(target_neighbors - 1, len(weights) - 1)]
                 strategy = 'adaptive_threshold'
                 message = f'Protein has {total_neighbors} neighbors, using adaptive threshold'

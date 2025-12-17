@@ -1,15 +1,3 @@
-"""
-Data Loader for Protein Database
-
-This script loads protein data from TSV files into MongoDB.
-It parses the UniProt data files and creates structured documents
-with searchable fields for identifier, name, description, domains (InterPro),
-and EC numbers.
-
-Author: Project NoSQL Team
-Date: December 2025
-"""
-
 import csv
 import os
 import sys
@@ -19,9 +7,7 @@ from database.mongodb_client import MongoDBClient
 
 class ProteinDataLoader:
     """
-    Loads protein data from TSV files into MongoDB.
-    
-    The loader processes UniProt TSV files and extracts:
+    Loads protein data from TSV files into MongoDB and extracts:
     - Entry (identifier)
     - Entry Name
     - Protein names (description)
@@ -42,18 +28,6 @@ class ProteinDataLoader:
         }
     
     def parse_ec_numbers(self, ec_string: str) -> List[str]:
-        """
-        Parse EC numbers from the EC number field.
-        
-        EC numbers are enzyme classification numbers (e.g., 1.14.14.1)
-        They can be separated by semicolons and may have trailing spaces.
-        
-        Args:
-            ec_string: Raw EC number string from TSV
-            
-        Returns:
-            List of EC numbers (empty list if none)
-        """
         if not ec_string or ec_string.strip() == '':
             return []
         
@@ -62,18 +36,6 @@ class ProteinDataLoader:
         return ec_numbers
     
     def parse_interpro_domains(self, interpro_string: str) -> List[str]:
-        """
-        Parse InterPro domain identifiers from the InterPro field.
-        
-        InterPro IDs are protein domain/family identifiers (e.g., IPR001128)
-        They can be separated by semicolons.
-        
-        Args:
-            interpro_string: Raw InterPro string from TSV
-            
-        Returns:
-            List of InterPro IDs (empty list if none)
-        """
         if not interpro_string or interpro_string.strip() == '':
             return []
         
@@ -84,22 +46,6 @@ class ProteinDataLoader:
     def create_protein_document(self, row: Dict[str, str]) -> Optional[Dict]:
         """
         Create a MongoDB document from a TSV row.
-        
-        The document structure includes:
-        - identifier: Protein entry ID (e.g., A0A087X1C5)
-        - entry_name: Entry name (e.g., CP2D7_HUMAN)
-        - name: Full protein name
-        - organism: Species information
-        - sequence: Amino acid sequence
-        - ec_numbers: List of EC numbers (for labeled proteins)
-        - interpro_domains: List of InterPro domain IDs
-        - is_labeled: Boolean indicating if protein has EC numbers
-        
-        Args:
-            row: Dictionary representing a TSV row
-            
-        Returns:
-            MongoDB document as dictionary, or None if invalid
         """
         try:
             # Extract fields based on column names
@@ -141,13 +87,6 @@ class ProteinDataLoader:
     def load_tsv_file(self, filepath: str, batch_size: int = 1000) -> None:
         """
         Load protein data from a TSV file into MongoDB.
-        
-        The loader processes the file in batches for efficiency.
-        It provides progress updates and statistics.
-        
-        Args:
-            filepath: Path to the TSV file
-            batch_size: Number of documents to insert at once
         """
         if not os.path.exists(filepath):
             print(f"Error: File not found: {filepath}")
@@ -201,9 +140,6 @@ class ProteinDataLoader:
     def _insert_batch(self, batch: List[Dict]) -> None:
         """
         Insert a batch of documents into MongoDB.
-        
-        Args:
-            batch: List of protein documents to insert
         """
         try:
             if batch:
@@ -235,9 +171,6 @@ class ProteinDataLoader:
 
 
 def main():
-    """
-    Main function to load protein data into MongoDB.
-    """
     print("\n" + "="*60)
     print("PROTEIN DATA LOADER - MongoDB Import")
     print("="*60 + "\n")

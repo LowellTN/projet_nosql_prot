@@ -12,22 +12,9 @@ class LabelPropagation:
     
     The algorithm propagates EC numbers from labeled proteins to unlabeled
     neighbors based on edge weights (Jaccard similarity).
-    
-    Key features:
-    - Multi-label classification (proteins can have multiple EC numbers)
-    - Weighted voting based on edge weights
-    - Confidence scores for predictions
-    - Iterative propagation through the graph
     """
     
     def __init__(self, mongo_client: MongoDBClient, neo4j_client: Neo4jClient):
-        """
-        Initialize label propagation.
-        
-        Args:
-            mongo_client: MongoDB client instance
-            neo4j_client: Neo4j client instance
-        """
         self.mongo_client = mongo_client
         self.neo4j_client = neo4j_client
         self.stats = {
@@ -40,19 +27,6 @@ class LabelPropagation:
         }
     
     def get_neighbor_labels(self, protein_id: str, min_weight: float = 0.1) -> Dict[str, float]:
-        """
-        Get EC numbers from neighbors with weighted voting.
-        
-        For each EC number, calculates a weighted vote:
-            vote(ec) = sum(weight * has_ec(neighbor)) / sum(weight)
-        
-        Args:
-            protein_id: Protein identifier
-            min_weight: Minimum edge weight to consider
-            
-        Returns:
-            Dictionary mapping EC number to confidence score (0.0 to 1.0)
-        """
         with self.neo4j_client.driver.session() as session:
             result = session.run(
                 """
@@ -91,25 +65,6 @@ class LabelPropagation:
     def propagate_labels(self, confidence_threshold: float = 0.3,
                         min_edge_weight: float = 0.1,
                         max_labels_per_protein: int = 5) -> List[Dict]:
-        """
-        Propagate labels to all unlabeled proteins in the graph.
-        
-        Algorithm:
-        1. Find all unlabeled proteins with labeled neighbors
-        2. For each unlabeled protein:
-           a. Collect EC numbers from neighbors
-           b. Calculate weighted confidence scores
-           c. Assign labels above confidence threshold
-        3. Update MongoDB with predictions
-        
-        Args:
-            confidence_threshold: Minimum confidence to assign label (default: 0.3)
-            min_edge_weight: Minimum edge weight to consider (default: 0.1)
-            max_labels_per_protein: Maximum EC numbers to assign (default: 5)
-            
-        Returns:
-            List of predictions with confidence scores
-        """
         print(f"\n{'='*60}")
         print("LABEL PROPAGATION - Function Annotation")
         print(f"{'='*60}\n")
@@ -186,15 +141,6 @@ class LabelPropagation:
         return predictions
     
     def save_predictions_to_mongodb(self, predictions: List[Dict]) -> None:
-        """
-        Save predictions to MongoDB in a separate collection.
-        
-        Creates a 'predictions' collection with predicted EC numbers
-        and confidence scores.
-        
-        Args:
-            predictions: List of prediction dictionaries
-        """
         print(f"\n{'='*60}")
         print("SAVING PREDICTIONS TO MONGODB")
         print(f"{'='*60}\n")
@@ -221,15 +167,6 @@ class LabelPropagation:
         print(f"✓ Saved {upserted_count:,} predictions to MongoDB")
     
     def update_proteins_with_predictions(self, predictions: List[Dict]) -> None:
-        """
-        Update the main proteins collection with predicted EC numbers.
-        
-        This adds the predicted_ec_numbers field to the protein documents
-        and sets is_predicted flag to True.
-        
-        Args:
-            predictions: List of prediction dictionaries
-        """
         print(f"\n{'='*60}")
         print("UPDATING PROTEINS COLLECTION WITH PREDICTIONS")
         print(f"{'='*60}\n")
@@ -259,14 +196,6 @@ class LabelPropagation:
         print(f"✓ Updated {updated_count:,} proteins in MongoDB with predictions")
     
     def update_neo4j_with_predictions(self, predictions: List[Dict]) -> None:
-        """
-        Update Neo4j nodes with predicted EC numbers.
-        
-        Adds predicted EC numbers as a new property 'predicted_ec_numbers'.
-        
-        Args:
-            predictions: List of prediction dictionaries
-        """
         print(f"\n{'='*60}")
         print("UPDATING NEO4J WITH PREDICTIONS")
         print(f"{'='*60}\n")
@@ -295,12 +224,6 @@ class LabelPropagation:
         print(f"✓ Updated {len(predictions):,} proteins in Neo4j")
     
     def _update_neo4j_batch(self, batch: List[Dict]) -> None:
-        """
-        Update a batch of proteins in Neo4j.
-        
-        Args:
-            batch: List of protein updates
-        """
         # Convert confidence dict to parallel lists for Neo4j storage
         for item in batch:
             confidence_dict = item['confidence']
@@ -319,40 +242,8 @@ class LabelPropagation:
                 """,
                 batch=batch
             )
-    
-    def evaluate_predictions(self, predictions: List[Dict]) -> Dict:
-        """
-        Evaluate prediction quality using proteins with known labels.
-        
-        For evaluation, we can:
-        1. Hide labels from some known proteins
-        2. Run label propagation
-        3. Compare predictions with actual labels
-        
-        Metrics:
-        - Precision: How many predicted labels are correct
-        - Recall: How many actual labels were predicted
-        - F1 Score: Harmonic mean of precision and recall
-        
-        Args:
-            predictions: List of prediction dictionaries
-            
-        Returns:
-            Dictionary with evaluation metrics
-        """
-        # This is a placeholder for evaluation logic
-        # In practice, you would split labeled data into train/test sets
-        
-        return {
-            'total_predictions': len(predictions),
-            'average_labels_per_protein': self.stats['total_labels_propagated'] / max(1, self.stats['proteins_annotated']),
-            'average_confidence': self.stats['average_confidence']
-        }
-    
+
     def print_statistics(self) -> None:
-        """
-        Print label propagation statistics.
-        """
         print(f"\n{'='*60}")
         print("LABEL PROPAGATION STATISTICS")
         print(f"{'='*60}")
@@ -366,9 +257,6 @@ class LabelPropagation:
 
 
 def main():
-    """
-    Main function to run label propagation.
-    """
     print("\n" + "="*60)
     print("LABEL PROPAGATION - Protein Function Annotation")
     print("="*60 + "\n")

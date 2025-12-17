@@ -23,16 +23,6 @@ class MongoDBClient:
         return self.proteins.find_one(query)
     
     def search_proteins(self, text: str, limit: int = 50) -> List[Dict]:
-        """
-        Search proteins by identifier, name, or description.
-        
-        Args:
-            text: Search term
-            limit: Maximum number of results
-            
-        Returns:
-            List of matching protein documents
-        """
         results = list(self.proteins.find({
             '$or': [
                 {'identifier': {'$regex': text, '$options': 'i'}},
@@ -48,12 +38,6 @@ class MongoDBClient:
         return results
     
     def get_statistics(self) -> Dict:
-        """
-        Get database statistics.
-        
-        Returns:
-            Dictionary with various statistics
-        """
         try:
             total_count = self.proteins.count_documents({})
             labeled_count = self.proteins.count_documents({'is_labeled': True})
